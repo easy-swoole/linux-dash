@@ -99,10 +99,14 @@ class LinuxDash
         return new GeneralInfo($info);
     }
 
-    public static function ioStats()
+    public static function ioStats():array
     {
+        $list = [];
         $info = self::exec('ioStats.sh');
-        return new IoStats($info);
+        foreach ($info as $value){
+            $list[] = new IoStats($value);
+        }
+        return $list;
     }
 
     /*
