@@ -20,9 +20,9 @@ final class MacOsDriverTest extends TestCase
 
     public function testNativeMetrics(): void
     {
-        self::assertGreaterThan(0, $this->driver->currentRam()->total); self::assertGreaterThanOrEqual(0, $this->driver->cpu(0.02)->usage);
-        self::assertNotEmpty($this->driver->network(0.01)); self::assertNotEmpty($this->driver->disks()); self::assertGreaterThanOrEqual(0, $this->driver->load()->one);
-        self::assertGreaterThan(0, $this->driver->uptime()->seconds); self::assertGreaterThan(0, $this->driver->system()->logicalCpus); self::assertGreaterThanOrEqual(0, $this->driver->swap()->used);
+        self::assertGreaterThan(0, $this->driver->currentRam()->total); $cpu = $this->driver->cpu(0.02); self::assertGreaterThanOrEqual(0, $cpu->usage); self::assertNotEmpty($cpu->cores);
+        $network = $this->driver->network(0.01); self::assertNotEmpty($network); self::assertGreaterThan(0, $network[0]->mtu); self::assertNotEmpty($this->driver->disks()); self::assertGreaterThanOrEqual(0, $this->driver->load()->one);
+        self::assertGreaterThan(0, $this->driver->uptime()->seconds); $system = $this->driver->system(); self::assertGreaterThan(0, $system->logicalCpus); self::assertNotNull($system->physicalCpus); self::assertNotNull($system->performanceCpus); self::assertNotNull($system->efficiencyCpus); self::assertGreaterThanOrEqual(0, $this->driver->swap()->used);
     }
 
     public function testPressureIsExplicitlyUnsupported(): void

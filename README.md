@@ -59,11 +59,17 @@ $cpu = $dash->cpu(0.5);
 | `usage` | `float` | CPU 总使用率 | `12.35` |
 | `user` | `float` | 用户态使用率 | `7.41` |
 | `system` | `float` | 内核态使用率 | `4.94` |
-| `idle` | `float` | 空闲率，Linux 中包含 iowait | `87.65` |
+| `idle` | `float` | 空闲率 | `82.65` |
+| `iowait` | `float` | Linux I/O 等待率；macOS 为 `0` | `5.00` |
+| `steal` | `float` | Linux 虚拟机被宿主机占用的时间；macOS 为 `0` | `0.00` |
+| `irq` | `float` | Linux 硬/软中断率；macOS 为 `0` | `0.25` |
+| `cores` | `CpuCoreInfo[]` | 每个逻辑核心的同类指标 | 见下方样例 |
 
 ```json
-{"usage":12.35,"user":7.41,"system":4.94,"idle":87.65}
+{"usage":12.35,"user":7.41,"system":4.69,"idle":82.65,"iowait":5.0,"steal":0.0,"irq":0.25,"cores":[{"core":0,"usage":15.0,"user":9.0,"system":6.0,"idle":80.0,"iowait":5.0,"steal":0.0,"irq":0.0}]}
 ```
+
+`CpuCoreInfo` 的字段为 `core`、`usage`、`user`、`system`、`idle`、`iowait`、`steal` 和 `irq`。macOS Apple Silicon 通过 Mach `host_processor_info` 返回每个逻辑核心数据。
 
 ### `network(float $sampleSeconds = 0.1): NetworkInfo[]`
 
@@ -83,9 +89,17 @@ foreach ($interfaces as $interface) {
 | `tx` | `int` | 启动以来发送的累计字节 | `174725169` bytes |
 | `rxPerSecond` | `float` | 采样区间平均接收速率 | `1197.39` B/s |
 | `txPerSecond` | `float` | 采样区间平均发送速率 | `5787.40` B/s |
+| `rxPackets` / `txPackets` | `int` | 累计收发包数 | `4162112` / `2197013` |
+| `rxErrors` / `txErrors` | `int` | 累计收发错误数 | `0` / `0` |
+| `rxDropped` / `txDropped` | `int` | 累计丢弃包数 | `3` / `0` |
+| `collisions` | `int` | 累计链路碰撞数 | `0` |
+| `mtu` | `?int` | 最大传输单元 | `1500` |
+| `mac` | `?string` | MAC 地址；受系统隐私策略影响时可能为空或脱敏 | `00:11:22:33:44:55` |
+| `state` | `?string` | 链路状态 | `up` |
+| `addresses` | `string[]` | IPv4/IPv6 地址 | `["10.0.0.10","fe80::1"]` |
 
 ```json
-[{"interface":"eth0","rx":267561846,"tx":174725169,"rxPerSecond":1197.39,"txPerSecond":5787.4}]
+[{"interface":"eth0","rx":267561846,"tx":174725169,"rxPerSecond":1197.39,"txPerSecond":5787.4,"rxPackets":4162112,"txPackets":2197013,"rxErrors":0,"txErrors":0,"rxDropped":3,"txDropped":0,"collisions":0,"mtu":1500,"mac":"00:11:22:33:44:55","state":"up","addresses":["10.0.0.10","fe80::1"]}]
 ```
 
 ### `disks(): DiskInfo[]`
@@ -104,9 +118,13 @@ $partitions = $dash->disks();
 | `avail` | `int` | 普通用户可用容量 | `34040745984` bytes |
 | `usedPercentage` | `float` | 使用百分比 | `20.22` |
 | `mounted` | `string` | 挂载点 | `/` |
+| `inodes` | `?int` | inode 总数；平台无法提供时为 `null` | `2621440` |
+| `inodesUsed` | `?int` | 已使用 inode | `134000` |
+| `inodesAvailable` | `?int` | 可用 inode | `2487440` |
+| `inodesUsedPercentage` | `?float` | inode 使用率 | `5.11` |
 
 ```json
-[{"fileSystem":"/dev/vda3","size":42670731264,"used":8629985280,"avail":34040745984,"usedPercentage":20.22,"mounted":"/"}]
+[{"fileSystem":"/dev/vda3","size":42670731264,"used":8629985280,"avail":34040745984,"usedPercentage":20.22,"mounted":"/","inodes":2621440,"inodesUsed":134000,"inodesAvailable":2487440,"inodesUsedPercentage":5.11}]
 ```
 
 ### `load(): LoadInfo`
@@ -180,9 +198,13 @@ $system = $dash->system();
 | `architecture` | `string` | CPU 架构 | `x86_64` |
 | `logicalCpus` | `int` | 在线逻辑 CPU 数量 | `2` |
 | `cpuModel` | `?string` | CPU 型号，无法读取时为 `null` | `Intel(R) Xeon(R) Platinum` |
+| `physicalCpus` | `?int` | 物理核心数 | `8` |
+| `cpuFrequencyHz` | `?int` | 可读取时的当前/标称频率；Apple Silicon 通常不公开，可能为 `null` | `2400000000` |
+| `performanceCpus` | `?int` | Apple Silicon 性能核数量；Linux 为 `null` | `4` |
+| `efficiencyCpus` | `?int` | Apple Silicon 能效核数量；Linux 为 `null` | `4` |
 
 ```json
-{"hostname":"monitor-node-01","os":"Linux","kernel":"6.12.0-266.el10.x86_64","architecture":"x86_64","logicalCpus":2,"cpuModel":"Intel(R) Xeon(R) Platinum"}
+{"hostname":"apple-silicon-node","os":"macOS","kernel":"24.6.0","architecture":"arm64","logicalCpus":8,"cpuModel":"Apple M1","physicalCpus":8,"cpuFrequencyHz":null,"performanceCpus":4,"efficiencyCpus":4}
 ```
 
 ### `diskIo(float $sampleSeconds = 0.1): DiskIoInfo[]`
@@ -205,9 +227,14 @@ $devices = $dash->diskIo(1.0);
 | `readBytesPerSecond` | `float` | 读取吞吐量 | `1048576.00` B/s |
 | `writeBytesPerSecond` | `float` | 写入吞吐量 | `524288.00` B/s |
 | `busyPercentage` | `float` | 采样期间设备繁忙率 | `3.50` |
+| `readLatencyMs` | `float` | 采样期间平均读取延迟 | `3.20` ms |
+| `writeLatencyMs` | `float` | 采样期间平均写入延迟 | `4.10` ms |
+| `queueDepth` | `float` | 根据加权 I/O 时间估算的平均队列深度 | `0.15` |
+| `inProgress` | `int` | 采样结束时正在进行的 I/O 数量 | `1` |
+| `partition` | `bool` | 是否为分区而非整盘 | `false` |
 
 ```json
-[{"device":"vda","reads":27312,"writes":101154,"readBytes":880077824,"writeBytes":1646177792,"readsPerSecond":12.5,"writesPerSecond":8.2,"readBytesPerSecond":1048576,"writeBytesPerSecond":524288,"busyPercentage":3.5}]
+[{"device":"vda","reads":27312,"writes":101154,"readBytes":880077824,"writeBytes":1646177792,"readsPerSecond":12.5,"writesPerSecond":8.2,"readBytesPerSecond":1048576,"writeBytesPerSecond":524288,"busyPercentage":3.5,"readLatencyMs":3.2,"writeLatencyMs":4.1,"queueDepth":0.15,"inProgress":1,"partition":false}]
 ```
 
 macOS 调用该方法会抛出 `UnsupportedMetricException`。
@@ -277,6 +304,16 @@ macOS 或未暴露 `/proc/pressure` 的 Linux 主机会返回 `false`；此时�
 | `pressure()` | 取决于内核 PSI 配置 | 不支持 |
 
 macOS 需要启用 PHP FFI 扩展。CLI 环境通常可用，Web/FPM 环境还需确认 `ffi.enable` 配置。2.x 只采集宿主机指标，不包含 Docker、Kubernetes 或 cgroup 指标。
+
+### 为什么 macOS 暂不支持磁盘 I/O 和 TCP 状态
+
+这两项不是无法实现，而是 macOS 没有对应 Linux `/proc/diskstats`、`/proc/net/tcp` 的稳定公开文本接口：
+
+- 磁盘 I/O 需要通过 IOKit 枚举 `IOBlockStorageDriver`/`IOStorage`，并解析、释放 CoreFoundation 对象。设备属性名称和可见性会随 macOS 版本、磁盘类型及进程权限变化。
+- TCP 状态需要读取 `sysctl` PCB 列表并解析 XNU 内核二进制结构。PCB 结构布局受 macOS/XNU 版本影响，错误地写死布局可能返回错误数据，甚至造成越界读取。
+- Apple Silicon 限定解决了 CPU 架构差异，但没有消除 IOKit、XNU ABI 和沙盒权限差异。
+
+因此当前在 macOS 调用 `diskIo()` 或 `tcp()` 会明确抛出 `UnsupportedMetricException`，避免以空数组或不可靠数据伪装成功。后续只有在建立按 macOS/XNU 版本校验、结构长度校验和多版本真机测试后才会开放。
 
 ## 异常处理
 
